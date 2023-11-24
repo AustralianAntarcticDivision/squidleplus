@@ -5,6 +5,8 @@
 #'
 #' @param endpoint string: e.g. `/api/media`
 #' @param query list: as returned by [sq_req_query()]
+#' @param results_per_page integer: results are paginated - how many per page?
+#' @param page integer: results are paginated - which page to return?
 #'
 #' @return An `httr2_request` object
 #'
@@ -12,20 +14,44 @@
 #' \dontrun{
 #'   ## search for all media that contains annotations with the name that
 #'   ##  includes "ecklonia" (ignoring case)
-#'   res <- sq_req("api/media", query = sq_req_query(filters = sq_v(annotations %any%
+#'   res <- sq_query("api/media", query = sq_req_query(filters = sq_v(annotations %any%
 #'                  sq_v(annotations %any% sq_v(label %has% sq_v(name %ilike% "%ecklonia%"))))))
 #'   sq_req_content(res)
 #' }
 #' @export
-sq_req <- function(endpoint, query) {
-    sq_check_token()
-    request(paste0(sub("[/]+$", "", sq_opt("base_url")), "/", sub("^[/]+", "", endpoint))) %>%
-        req_headers("auth-token" = sq_opt("token"), "Content-type" = "application/json", "Accept" = "application/json") %>%
-        ##req_body_json(body) %>%
-        req_url_query(q = to_json(query)) %>%
-        req_error(is_error = sq_req_error_handler) %>%
-        req_perform
+sq_query <- function(endpoint, query, results_per_page = 10, page = 1) {
+    sq_req_build(endpoint, query = query) %>%
+        req_url_query(results_per_page = results_per_page, page = page) %>% req_perform()
 }
+
+sq_req <- function(endpoint, query) {
+    sq_req_build(endpoint, query) %>% req_perform
+}
+
+sq_req_build <- function(endpoint, query) {
+    r <- request(paste0(sub("[/]+$", "", sq_opt("base_url")), "/", sub("^[/]+", "", endpoint))) %>%
+        sq_req_add_token()
+    if (!missing(query)) r <- req_url_query(r, q = to_json(query))
+    ##req_body_json(body) %>%
+    r %>% req_error(body = function(resp) resp_body_string(resp))
+}
+
+
+## not exported
+sq_req_add_token <- function(res) {
+    tok <- sq_opt("token")
+    if (is.null(tok) || !nzchar(tok) || is.na(tok)) {
+        tok <- Sys.getenv("SQUIDLE_API_TOKEN")
+        if (!is.null(tok) && nzchar(tok) && !is.na(tok)) sq_set_opt(token = tok)
+    }
+    if (is.null(tok) || !nzchar(tok) || is.na(tok)) stop("invalid API token")
+    if (identical(tok, "nologin")) {
+        req_url_query(res, nologin = "true")
+    } else {
+        req_headers(res, "auth-token" = tok, "Content-type" = "application/json", "Accept" = "application/json")
+    }
+}
+
 
 #' Extract response content
 #'
@@ -36,7 +62,7 @@ sq_req <- function(endpoint, query) {
 #' @export
 sq_req_content <- function(res) from_json(resp_body_string(res))
 
-sq_req_error_handler <- function(resp) stop("request failed: ", resp_body_string(resp))
+##sq_req_error_handler <- function(resp) stop("request failed: ", resp_body_string(resp))
 
 ## Pagination
 ##
