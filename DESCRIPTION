@@ -1,0 +1,19 @@
+Package: squidleplus
+Type: Package
+Title: Squidle+ API
+Version: 0.0.1
+Authors@R: c(person("Ben", "Raymond", email = "ben.raymond@aad.gov.au", role = c("aut", "cre")),
+             person("Australian Antarctic Division", role = "cph"))
+Description: Squidle+ API.
+URL: https://github.com/AustralianAntarcticDivision/squidleplus
+BugReports: https://github.com/AustralianAntarcticDivision/squidleplus/issues
+Depends:
+    R (>= 4.1.0)
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+  assertthat,
+  httr2,
+  jsonlite
+Suggests:
+RoxygenNote: 7.2.3
